@@ -93,6 +93,14 @@ async def create_webchat(payload: WebChatCreateRequest, db: TenantDB, user: Curr
     return ChannelAccountResponse.model_validate(account)
 
 
+@router.delete("/{channel_id}", status_code=204)
+async def delete_channel(channel_id: uuid.UUID, db: TenantDB, _user: CurrentUser):
+    account = await db.scalar(select(ChannelAccount).where(ChannelAccount.id == channel_id))
+    if account:
+        await db.delete(account)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Public webhooks + web chat ingestion
 # ---------------------------------------------------------------------------

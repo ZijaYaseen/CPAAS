@@ -64,6 +64,7 @@ class EmailAdapter(ChannelAdapter):
         password = credentials.get("smtp_password") or settings.smtp_password
         from_addr = credentials.get("from_address") or user
         if not (host and from_addr):
+            logger.warning("email_send_missing_smtp", host=host, from_addr=from_addr)
             return OutboundResult(success=False, error="Missing SMTP configuration")
 
         message = EmailMessage()
