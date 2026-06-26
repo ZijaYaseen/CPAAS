@@ -1,0 +1,65 @@
+[project]
+name = "ucaas-backend"
+version = "0.1.0"
+description = "Unified Communication Platform — FastAPI modular monolith backend"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    # ---- Web framework ----
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "python-multipart==0.0.20",
+    # ---- Data / ORM ----
+    "sqlalchemy[asyncio]==2.0.36",
+    "asyncpg==0.30.0",
+    "psycopg[binary]==3.2.3", # sync driver for Alembic
+    "alembic==1.14.0",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.0",
+    # ---- Auth / Security ----
+    "argon2-cffi==23.1.0",
+    "itsdangerous==2.2.0",
+    "cryptography==44.0.0",
+    # ---- Email channel ----
+    "aiosmtplib==3.0.2",
+    # ---- Cache / Queue / Realtime ----
+    "redis==5.2.1",
+    "celery==5.4.0",
+    "flower==2.0.1",
+    # ---- Observability ----
+    "structlog==24.4.0",
+    # ---- HTTP clients (channels, AI) ----
+    "httpx==0.28.1",
+    # ---- AI / RAG ----
+    "openai>=1.87.0",
+    "openai-agents>=0.0.19",
+    "pgvector==0.3.6",
+    "pypdf==5.1.0",
+    "email-validator>=2.3.0",
+    "sentry-sdk[fastapi]>=2.63.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.8.4",
+    "black==24.10.0",
+    "pytest==8.3.4",
+    "pytest-asyncio==0.25.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "ASYNC"]
+ignore = ["B008"]   # FastAPI uses function calls (Depends()) in argument defaults
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]

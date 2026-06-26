@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+  title: Analytics API
+  description: Business metrics and dashboards
+  version: 1.0.0
+
+paths:
+  /analytics/inbox:
+    get:
+      summary: Get inbox metrics
+      tags: [Analytics]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Inbox metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  first_response_time_avg:
+                    type: number
+                  average_response_time:
+                    type: number
+
+  /analytics/tickets:
+    get:
+      summary: Get ticket metrics
+      tags: [Analytics]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Ticket metrics
+
+  /analytics/ai:
+    get:
+      summary: Get AI performance metrics
+      tags: [Analytics]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: AI metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deflection_rate:
+                    type: number
+                  total_ai_runs:
+                    type: integer
+
+  /analytics/campaigns:
+    get:
+      summary: Get campaign performance
+      tags: [Analytics]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Campaign metrics

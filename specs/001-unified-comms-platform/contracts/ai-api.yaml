@@ -1,0 +1,59 @@
+openapi: 3.0.3
+info:
+  title: AI API
+  description: AI agent configuration and monitoring
+  version: 1.0.0
+
+paths:
+  /ai/config:
+    get:
+      summary: Get AI configuration
+      tags: [AI]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: AI configuration
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    agent_type:
+                      type: string
+                      enum: [router, support, sales, billing]
+                    is_enabled:
+                      type: boolean
+
+    patch:
+      summary: Update AI configuration
+      tags: [AI]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_type]
+              properties:
+                agent_type:
+                  type: string
+                is_enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: AI config updated
+
+  /ai/runs:
+    get:
+      summary: List AI runs (audit log)
+      tags: [AI]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: AI runs

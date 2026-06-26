@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: Channels API
+  description: Manage channel integrations (WhatsApp, Email, SMS, etc.)
+  version: 1.0.0
+
+paths:
+  /channels:
+    get:
+      summary: List connected channels
+      tags: [Channels]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: List of channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChannelAccount'
+
+  /channels/whatsapp/connect:
+    post:
+      summary: Connect WhatsApp Business API
+      tags: [Channels]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_number_id, access_token]
+              properties:
+                name:
+                  type: string
+                phone_number_id:
+                  type: string
+                access_token:
+                  type: string
+      responses:
+        '201':
+          description: WhatsApp connected
+
+  /channels/email/connect:
+    post:
+      summary: Connect Email account
+      tags: [Channels]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, smtp_host, smtp_port, smtp_username, smtp_password]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                smtp_host:
+                  type: string
+                smtp_port:
+                  type: integer
+                smtp_username:
+                  type: string
+                smtp_password:
+                  type: string
+      responses:
+        '201':
+          description: Email connected
+
+  /channels/{channel_id}:
+    delete:
+      summary: Disconnect channel
+      tags: [Channels]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Channel disconnected
+
+components:
+  schemas:
+    ChannelAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        channel_type:
+          type: string
+          enum: [whatsapp, email, sms, instagram, facebook, webchat, voice]
+        name:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time

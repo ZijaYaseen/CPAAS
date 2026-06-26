@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: Knowledge Base API
+  description: RAG knowledge base management
+  version: 1.0.0
+
+paths:
+  /knowledge/documents:
+    get:
+      summary: List knowledge documents
+      tags: [Knowledge Base]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: List of documents
+
+    post:
+      summary: Upload document
+      tags: [Knowledge Base]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, title]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+      responses:
+        '201':
+          description: Document uploaded
+
+  /knowledge/search:
+    post:
+      summary: Semantic search
+      tags: [Knowledge Base]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+      responses:
+        '200':
+          description: Search results

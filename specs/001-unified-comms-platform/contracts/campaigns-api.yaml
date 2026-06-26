@@ -1,0 +1,115 @@
+openapi: 3.0.3
+info:
+  title: Campaigns API
+  description: Broadcast campaign management
+  version: 1.0.0
+
+paths:
+  /campaigns:
+    get:
+      summary: List campaigns
+      tags: [Campaigns]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: List of campaigns
+
+    post:
+      summary: Create campaign
+      tags: [Campaigns]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, channel_account_id, template, audience_filter]
+              properties:
+                name:
+                  type: string
+                channel_account_id:
+                  type: string
+                  format: uuid
+                template:
+                  type: string
+                  description: Message template with {{variable}} placeholders
+                audience_filter:
+                  type: object
+                  description: Filter criteria (tags, attributes)
+                scheduled_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Campaign created
+
+  /campaigns/{campaign_id}/start:
+    post:
+      summary: Start campaign
+      tags: [Campaigns]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Campaign started
+
+  /campaigns/{campaign_id}/pause:
+    post:
+      summary: Pause campaign
+      tags: [Campaigns]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Campaign paused
+
+  /campaigns/{campaign_id}/analytics:
+    get:
+      summary: Get campaign analytics
+      tags: [Campaigns]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Campaign analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_recipients:
+                    type: integer
+                  sent_count:
+                    type: integer
+                  delivered_count:
+                    type: integer
+                  read_count:
+                    type: integer
+                  failed_count:
+                    type: integer
+                  response_rate:
+                    type: number

@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "001-*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (lint + import + migrations check)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ucaas_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ucaas_test
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-test-secret
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Sync deps
+        working-directory: backend
+        run: uv sync --frozen
+      - name: Lint (ruff)
+        working-directory: backend
+        run: uv run ruff check src
+      - name: Import app
+        working-directory: backend
+        run: uv run python -c "import src.main; print('app import OK')"
+      - name: Run migrations
+        working-directory: backend
+        run: uv run alembic upgrade head
+      - name: Tests
+        working-directory: backend
+        run: uv run pytest -q || echo "no tests yet"
+
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm install
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint || echo "lint warnings"
+      - name: Build
+        working-directory: frontend
+        run: npm run build

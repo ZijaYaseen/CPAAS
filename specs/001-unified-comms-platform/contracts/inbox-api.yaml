@@ -1,0 +1,199 @@
+openapi: 3.0.3
+info:
+  title: Inbox API
+  description: Unified inbox for multi-channel conversations and messages
+  version: 1.0.0
+
+paths:
+  /inbox/conversations:
+    get:
+      summary: List conversations
+      tags: [Inbox]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, closed]
+        - name: assigned_to_me
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  total:
+                    type: integer
+
+  /inbox/conversations/{conversation_id}/messages:
+    get:
+      summary: Get messages in conversation
+      tags: [Inbox]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Messages in conversation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+
+  /inbox/messages/send:
+    post:
+      summary: Send message
+      tags: [Inbox]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conversation_id, content]
+              properties:
+                conversation_id:
+                  type: string
+                  format: uuid
+                content:
+                  type: string
+                media_urls:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /inbox/conversations/{conversation_id}/assign:
+    post:
+      summary: Assign conversation to user/team
+      tags: [Inbox]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                team_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Conversation assigned
+
+components:
+  schemas:
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        contact:
+          $ref: '#/components/schemas/Contact'
+        channel:
+          type: object
+          properties:
+            type:
+              type: string
+            name:
+              type: string
+        status:
+          type: string
+          enum: [open, closed]
+        last_message_at:
+          type: string
+          format: date-time
+        assigned_to_user:
+          type: object
+          nullable: true
+        unread_count:
+          type: integer
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum: [inbound, outbound]
+        sender_type:
+          type: string
+        content:
+          type: string
+        media_urls:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [sent, delivered, read, failed]
+        created_at:
+          type: string
+          format: date-time
+
+    Contact:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string

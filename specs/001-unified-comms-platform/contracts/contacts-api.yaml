@@ -1,0 +1,122 @@
+openapi: 3.0.3
+info:
+  title: Contacts API
+  description: CRM contact management
+  version: 1.0.0
+
+paths:
+  /contacts:
+    get:
+      summary: List contacts
+      tags: [Contacts]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: List of contacts
+
+    post:
+      summary: Create contact
+      tags: [Contacts]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                lifecycle_stage:
+                  type: string
+                  enum: [lead, customer, churned]
+      responses:
+        '201':
+          description: Contact created
+
+  /contacts/{contact_id}:
+    get:
+      summary: Get contact details
+      tags: [Contacts]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: contact_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Contact details
+
+    patch:
+      summary: Update contact
+      tags: [Contacts]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: contact_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                lifecycle_stage:
+                  type: string
+      responses:
+        '200':
+          description: Contact updated
+
+  /contacts/{contact_id}/tags:
+    post:
+      summary: Add tag to contact
+      tags: [Contacts]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: contact_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag]
+              properties:
+                tag:
+                  type: string
+      responses:
+        '201':
+          description: Tag added
