@@ -14,6 +14,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from src.core.config import settings
 
+# Import all models so SQLAlchemy metadata has every table (including tenants)
+# before the worker engine is created. Without this, FK resolution fails.
+import src.modules.auth.models  # noqa: F401
+import src.modules.inbox.models  # noqa: F401
+import src.modules.channels.models  # noqa: F401
+import src.modules.contacts.models  # noqa: F401
+import src.modules.ai.models  # noqa: F401
+import src.modules.knowledge.models  # noqa: F401
+import src.modules.audit.service  # noqa: F401
+
 T = TypeVar("T")
 
 

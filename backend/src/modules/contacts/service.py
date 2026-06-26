@@ -43,6 +43,8 @@ async def get_or_create_contact(
         _record_channel_identity(contact, channel_type, channel_identifier)
         if full_name and not contact.full_name:
             contact.full_name = full_name
+        if email and not contact.email:
+            contact.email = email
         return contact
 
     channels = {}
