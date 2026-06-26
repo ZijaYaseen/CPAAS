@@ -38,6 +38,7 @@ if __name__ == "__main__":
             "-A", "src.celery_app.celery_app",
             "worker",
             "--loglevel=info",
+            "--queues=default,messages,webhooks,ai,email",
         ]
     )
     sys.exit(result.returncode)
