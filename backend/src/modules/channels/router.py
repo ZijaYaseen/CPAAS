@@ -55,9 +55,25 @@ async def connect_whatsapp(payload: WhatsAppConnectRequest, db: TenantDB, user: 
             "phone_number_id": payload.phone_number_id,
             "access_token": payload.access_token,
             "app_secret": payload.app_secret,
+            "waba_id": payload.waba_id,
         },
         configuration={"phone_number_id": payload.phone_number_id},
     )
+    # Auto-subscribe this app to the WABA so webhook receives inbound messages
+    if payload.waba_id:
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    f"https://graph.facebook.com/v21.0/{payload.waba_id}/subscribed_apps",
+                    headers={"Authorization": f"Bearer {payload.access_token}"},
+                )
+            if resp.status_code == 200:
+                logger.info("whatsapp_waba_subscribed", waba_id=payload.waba_id)
+            else:
+                logger.warning("whatsapp_waba_subscribe_failed", status=resp.status_code, body=resp.text)
+        except Exception as exc:
+            logger.warning("whatsapp_waba_subscribe_error", error=str(exc))
     return ChannelAccountResponse.model_validate(account)
 
 
@@ -133,7 +149,9 @@ async def whatsapp_webhook(request: Request, db: Annotated[AsyncSession, Depends
 async def email_webhook(request: Request, db: Annotated[AsyncSession, Depends(get_db)]):
     # SendGrid Inbound Parse posts multipart form data.
     form = await request.form()
-    payload = {k: (v if isinstance(v, str) else None) for k, v in form.items()}
+    # Normalize keys to lowercase — Cloudmailin and other providers vary in casing
+    payload = {k.lower(): (v if isinstance(v, str) else None) for k, v in form.items()}
+    logger.info("email_webhook_fields", fields=list(payload.keys()))
     await service.process_inbound(db, channel_type=ChannelType.email.value, payload=payload)
     return {"status": "received"}
 

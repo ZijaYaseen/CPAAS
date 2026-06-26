@@ -500,12 +500,13 @@ function WhatsAppForm({
 }) {
   const [name,    setName]    = useState("");
   const [phoneId, setPhoneId] = useState("");
+  const [wabaId,  setWabaId]  = useState("");
   const [token,   setToken]   = useState("");
   const [secret,  setSecret]  = useState("");
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   const webhookUrl = `${apiBase}/webhooks/whatsapp`;
 
-  const ready = name && phoneId && token;
+  const ready = name && phoneId && wabaId && token;
 
   const submit = async () => {
     if (!ready) return;
@@ -516,6 +517,7 @@ function WhatsAppForm({
         phone_number_id: phoneId,
         access_token: token,
         app_secret: secret || undefined,
+        waba_id: wabaId,
       });
       onSuccess(data);
     } finally {
@@ -528,29 +530,34 @@ function WhatsAppForm({
       <InfoBox type="tip">
         <p className="font-semibold">How to get these credentials</p>
         <ol className="mt-1.5 space-y-1 text-xs list-decimal list-inside">
-          <li>Go to developers.facebook.com and create a Business app</li>
-          <li>Add the WhatsApp product to your app</li>
-          <li>Open WhatsApp &gt; Getting Started to find your Phone Number ID and Token</li>
-          <li>Under Configuration, set the webhook URL shown below and choose your own Verify Token</li>
+          <li>Go to developers.facebook.com → Create a Business app → Add WhatsApp product</li>
+          <li>Open WhatsApp → API Setup to find Phone Number ID, WABA ID, and Access Token</li>
+          <li>Under Configuration, set the Webhook URL below and Verify Token: <strong>whatsapp-verify-token</strong></li>
+          <li>Subscribe to the <strong>messages</strong> webhook field</li>
         </ol>
       </InfoBox>
 
       <div className="space-y-2">
         <p className="text-sm font-medium">Your Webhook URL</p>
         <CopySnippet value={webhookUrl} label="Copy webhook URL" />
-        <p className="text-xs text-muted-foreground">
-          Paste this into the Webhook URL field inside Meta Developer Dashboard. Set any random string as your Verify Token and add the same value to your backend .env as WHATSAPP VERIFY TOKEN.
-        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Channel Name" placeholder="WhatsApp Business" value={name} onChange={setName} required />
+        <FormField label="Channel Name" placeholder="WhatsApp Support" value={name} onChange={setName} required />
         <FormField
           label="Phone Number ID"
           placeholder="123456789012345"
           value={phoneId}
           onChange={setPhoneId}
-          hint="Found in Meta Dashboard under WhatsApp > Getting Started"
+          hint="WhatsApp → API Setup → Phone Number ID"
+          required
+        />
+        <FormField
+          label="WhatsApp Business Account ID"
+          placeholder="1312735957151574"
+          value={wabaId}
+          onChange={setWabaId}
+          hint="WhatsApp → API Setup → WhatsApp Business Account ID"
           required
         />
         <div className="sm:col-span-2">
@@ -560,18 +567,18 @@ function WhatsAppForm({
             value={token}
             onChange={setToken}
             type="password"
-            hint="Use a System User token for production. Temporary tokens expire in 24 hours."
+            hint="WhatsApp → API Setup → Temporary or permanent access token"
             required
           />
         </div>
         <div className="sm:col-span-2">
           <FormField
             label="App Secret"
-            placeholder="Optional but strongly recommended"
+            placeholder="Optional but recommended"
             value={secret}
             onChange={setSecret}
             type="password"
-            hint="Found in App Settings > Basic. Enables webhook signature verification so fake requests are rejected."
+            hint="App Settings → Basic → App Secret"
           />
         </div>
       </div>

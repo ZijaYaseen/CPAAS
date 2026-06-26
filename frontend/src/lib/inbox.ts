@@ -11,6 +11,7 @@ export type Conversation = {
   id: string;
   status: string;
   channel_account_id: string | null;
+  channel_type: string | null;
   assigned_to_user_id: string | null;
   assigned_to_team_id: string | null;
   last_message_at: string | null;

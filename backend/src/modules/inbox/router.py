@@ -50,6 +50,7 @@ async def list_conversations(
             },
             contact=ContactSummary.model_validate(row["contact"]),
             last_message_preview=row["last_message_preview"],
+            channel_type=row.get("channel_type"),
         )
         for row in rows
     ]

@@ -10,6 +10,7 @@ class WhatsAppConnectRequest(BaseModel):
     phone_number_id: str
     access_token: str
     app_secret: str | None = None
+    waba_id: str | None = None  # WhatsApp Business Account ID — auto-subscribes webhook on connect
 
 
 class EmailConnectRequest(BaseModel):

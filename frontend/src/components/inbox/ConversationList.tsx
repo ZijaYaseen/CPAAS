@@ -115,6 +115,7 @@ export function ConversationList({
               key={c.id}
               conversation={c}
               active={c.id === activeId}
+              channelType={c.channel_type ?? undefined}
               onClick={() => onSelect(c)}
             />
           ))

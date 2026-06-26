@@ -36,6 +36,7 @@ class ConversationResponse(BaseModel):
     id: uuid.UUID
     status: str
     channel_account_id: uuid.UUID | None
+    channel_type: str | None = None
     assigned_to_user_id: uuid.UUID | None
     assigned_to_team_id: uuid.UUID | None
     last_message_at: datetime | None

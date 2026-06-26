@@ -53,10 +53,8 @@ export function ConversationItem({
       {/* Avatar */}
       <div className="relative shrink-0">
         <div
-          className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white shadow-sm",
-            avatarColor
-          )}
+          className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white shadow-sm"
+          style={{ backgroundColor: avatarColor }}
         >
           {initials}
         </div>

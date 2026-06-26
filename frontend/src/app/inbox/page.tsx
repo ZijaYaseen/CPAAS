@@ -8,7 +8,6 @@ import { ConversationList } from "@/components/inbox/ConversationList";
 import { MessageThread } from "@/components/messages/MessageThread";
 import { MessageComposer } from "@/components/messages/MessageComposer";
 import { AssignmentDropdown } from "@/components/inbox/AssignmentDropdown";
-import { InternalNotes } from "@/components/inbox/InternalNotes";
 import {
   addNote,
   fetchConversations,
@@ -146,10 +145,8 @@ export default function InboxPage() {
 
               {/* Contact avatar */}
               <div
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white",
-                  getAvatarColor(active.contact.id)
-                )}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                style={{ backgroundColor: getAvatarColor(active.contact.id) }}
               >
                 {getInitials(contactName)}
               </div>
@@ -199,10 +196,13 @@ export default function InboxPage() {
             </header>
 
             {/* Messages */}
-            <MessageThread messages={messages} />
-
-            {/* Internal notes strip */}
-            <InternalNotes messages={messages} />
+            <MessageThread
+              messages={messages}
+              contactName={contactName}
+              contactId={active.contact.id}
+              agentName={user.full_name ?? user.email}
+              agentId={user.id}
+            />
 
             {/* Composer */}
             <MessageComposer onSend={onSend} onAddNote={onAddNote} />

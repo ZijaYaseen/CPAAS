@@ -10,7 +10,19 @@ function isSameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
-export function MessageThread({ messages }: { messages: Message[] }) {
+export function MessageThread({
+  messages,
+  contactName,
+  contactId,
+  agentName,
+  agentId,
+}: {
+  messages: Message[];
+  contactName?: string;
+  contactId?: string;
+  agentName?: string;
+  agentId?: string;
+}) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,7 +56,13 @@ export function MessageThread({ messages }: { messages: Message[] }) {
                 <div className="h-px flex-1 bg-border" />
               </div>
             )}
-            <MessageBubble message={m} />
+            <MessageBubble
+              message={m}
+              contactName={contactName}
+              contactId={contactId}
+              agentName={agentName}
+              agentId={agentId}
+            />
           </div>
         );
       })}

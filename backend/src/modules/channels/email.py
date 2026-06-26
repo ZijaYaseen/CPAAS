@@ -24,22 +24,42 @@ class EmailAdapter(ChannelAdapter):
         return True
 
     def parse_inbound(self, payload: dict) -> list[NormalizedInbound]:
-        # Supports both Mailgun and SendGrid field names.
-        sender = payload.get("from") or payload.get("sender", "")
-        email_addr = sender.split("<")[-1].strip(">").strip() if sender else ""
-        sender_name = (sender.split("<")[0].strip() if "<" in sender else None) or None
-        content = (
-            payload.get("plain")         # Cloudmailin
-            or payload.get("body-plain") # Mailgun
-            or payload.get("text")       # SendGrid
-            or payload.get("body-html")  # Mailgun HTML fallback
-            or payload.get("html")       # SendGrid HTML fallback
+        # Keys are already lowercased by the webhook router.
+        # Cloudmailin "Multipart-Normalized" format nests email headers as flat keys:
+        # headers[from], headers[to], headers[message_id], headers[subject], etc.
+        # SendGrid/Mailgun use top-level: from, to, message-id, subject.
+        logger.info("email_parse_inbound_keys", keys=list(payload.keys()))
+        sender = (
+            payload.get("headers[from]")      # Cloudmailin
+            or payload.get("from")            # SendGrid / Mailgun
+            or payload.get("sender")          # Mailgun alt
+            or payload.get("envelope[from]")  # SMTP envelope fallback
+            or ""
         )
-        to_addr = payload.get("recipient") or payload.get("to") or payload.get("To", "")
+        email_addr = sender.split("<")[-1].strip(">").strip() if "<" in sender else sender.strip()
+        sender_name = (sender.split("<")[0].strip() if "<" in sender else None) or None
+        logger.info("email_parse_inbound_sender", sender=sender, email_addr=email_addr)
+        content = (
+            payload.get("plain")         # Cloudmailin / SendGrid
+            or payload.get("body-plain") # Mailgun
+            or payload.get("text")       # SendGrid alt
+            or payload.get("body-html")  # Mailgun HTML fallback
+            or payload.get("html")       # Cloudmailin / SendGrid HTML fallback
+        )
+        to_addr = (
+            payload.get("headers[to]")   # Cloudmailin
+            or payload.get("recipient")  # Mailgun
+            or payload.get("to")         # SendGrid
+            or ""
+        )
         msg_id = (
-            payload.get("Message-Id")   # Mailgun
+            payload.get("headers[message_id]")  # Cloudmailin
+            or payload.get("message-id")        # standard lowercased
             or payload.get("message_id")
-            or payload.get("Message-ID")
+        )
+        subject = (
+            payload.get("headers[subject]")  # Cloudmailin
+            or payload.get("subject")        # SendGrid / Mailgun
         )
         return [
             NormalizedInbound(
@@ -49,7 +69,7 @@ class EmailAdapter(ChannelAdapter):
                 sender_name=sender_name,
                 content=content,
                 channel_metadata={
-                    "subject": payload.get("subject") or payload.get("Subject"),
+                    "subject": subject,
                     "to": to_addr,
                 },
             )

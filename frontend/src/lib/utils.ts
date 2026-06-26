@@ -33,14 +33,14 @@ export function formatDateSeparator(dateStr: string): string {
 }
 
 const AVATAR_COLORS = [
-  "bg-violet-500",
-  "bg-blue-500",
-  "bg-emerald-500",
-  "bg-rose-500",
-  "bg-amber-500",
-  "bg-cyan-500",
-  "bg-pink-500",
-  "bg-indigo-500",
+  "#7c3aed", // violet
+  "#2563eb", // blue
+  "#059669", // emerald
+  "#e11d48", // rose
+  "#d97706", // amber
+  "#0284c7", // sky
+  "#db2777", // pink
+  "#4338ca", // indigo
 ];
 
 export function getAvatarColor(seed: string): string {

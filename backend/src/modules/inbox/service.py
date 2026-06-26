@@ -56,6 +56,13 @@ async def list_conversations(
         for c in (await db.scalars(select(Contact).where(Contact.id.in_(contact_ids)))).all()
     }
 
+    # Channel accounts for channel_type
+    channel_ids = {c.channel_account_id for c in conversations if c.channel_account_id}
+    channel_accounts = {
+        ca.id: ca
+        for ca in (await db.scalars(select(ChannelAccount).where(ChannelAccount.id.in_(channel_ids)))).all()
+    } if channel_ids else {}
+
     # Last message per conversation (DISTINCT ON for a single round-trip).
     conv_ids = [c.id for c in conversations]
     last_msgs_stmt = (
@@ -71,11 +78,13 @@ async def list_conversations(
     result = []
     for conv in conversations:
         last = last_by_conv.get(conv.id)
+        ca = channel_accounts.get(conv.channel_account_id) if conv.channel_account_id else None
         result.append(
             {
                 "conversation": conv,
                 "contact": contacts.get(conv.contact_id),
                 "last_message_preview": (last.content[:120] if last and last.content else None),
+                "channel_type": ca.channel_type if ca else None,
             }
         )
     return result
