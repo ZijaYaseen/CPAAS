@@ -29,3 +29,57 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
+}
+
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-30px) scale(0.95); }
+}
+
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.auth-orb-1 {
+  animation: float 7s ease-in-out infinite;
+}
+.auth-orb-2 {
+  animation: float-delayed 9s ease-in-out infinite;
+}
+.auth-orb-3 {
+  animation: float 11s ease-in-out infinite 2s;
+}
+
+.auth-slide-up {
+  animation: slide-up-fade 0.6s ease-out forwards;
+}
+.auth-slide-up-1 { animation: slide-up-fade 0.6s ease-out 0.1s both; }
+.auth-slide-up-2 { animation: slide-up-fade 0.6s ease-out 0.2s both; }
+.auth-slide-up-3 { animation: slide-up-fade 0.6s ease-out 0.3s both; }
+.auth-slide-up-4 { animation: slide-up-fade 0.6s ease-out 0.4s both; }
+.auth-slide-up-5 { animation: slide-up-fade 0.6s ease-out 0.5s both; }
+
+.auth-input-field {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.auth-input-field:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  outline: none;
+}
