@@ -24,6 +24,7 @@
 - [ ] **P-7 (Hardening, deferred)** RLS is advisory in MVP (app connects as DB owner). Phase 11 adds a restricted DB role + `FORCE ROW LEVEL SECURITY`. Until then, tenant isolation also relies on the service layer.
 
 **Code status**: Phase 1 ✅ · Phase 2 ✅ · Phase 3 Inbox ✅ · Phase 4 AI ✅ · Phase 11 Hardening ✅ · Post-MVP (5–10) ⬜
+**UI status**: Inbox ✅ · Avatars ✅ · Channel icons ✅ · Internal notes ✅ · WhatsApp connected ✅ · AI tuning 🔄
 
 ### 🤖 AI provider = Google Gemini (via OpenAI Agents SDK) — DONE in code
 
@@ -84,6 +85,43 @@ config `LLM_*` / `EMBEDDING_*` / `GEMINI_API_KEY` (alias).
 
 ---
 
+## 🟢 COMPLETED THIS SESSION (2026-06-26 → 2026-06-27)
+
+### Backend — Channel Fixes
+- [x] **S-24** `backend/src/modules/channels/email.py` — `parse_inbound()` Cloudmailin `headers[from]`, `headers[to]`, `headers[subject]`, `headers[message_id]` format support (flat nested keys, not top-level `from`)
+- [x] **S-25** `backend/src/modules/channels/router.py` — email webhook form keys normalized to lowercase; WhatsApp WABA auto-subscribe via Graph API on channel connect (`POST /{waba_id}/subscribed_apps`)
+- [x] **S-26** `backend/src/modules/channels/whatsapp.py` — signature verification bug fixed: returns `True` (skip) when no `app_secret` configured, `False` only when secret present but signature missing/wrong
+- [x] **S-27** `backend/src/modules/channels/schemas.py` — `waba_id: str | None = None` added to `WhatsAppConnectRequest`
+- [x] **S-28** `backend/src/modules/inbox/service.py` — `list_conversations` fetches `ChannelAccount` for each conversation and includes `channel_type` in result dict
+- [x] **S-29** `backend/src/modules/inbox/schemas.py` — `channel_type: str | None = None` added to `ConversationResponse`
+- [x] **S-30** `backend/src/modules/inbox/router.py` — `channel_type=row.get("channel_type")` passed to `ConversationResponse`
+
+### Frontend — Inbox UI Improvements
+- [x] **S-31** `frontend/src/components/messages/MessageComposer.tsx` — Enter = send, Shift+Enter = new line; send button moved inside textarea (absolute bottom-right)
+- [x] **S-32** `frontend/src/components/messages/MessageBubble.tsx` — AI system notes (🤖) → compact centered pill; human internal notes → Intercom-style amber card with left accent bar, avatar, "left a note", Private lock icon
+- [x] **S-33** `frontend/src/app/inbox/page.tsx` — removed duplicate `<InternalNotes>` component render (was showing AI notes twice)
+- [x] **S-34** `frontend/src/lib/inbox.ts` — `channel_type: string | null` added to `Conversation` type
+- [x] **S-35** `frontend/src/components/inbox/ConversationList.tsx` — `channelType={c.channel_type ?? undefined}` passed to `ConversationItem`
+- [x] **S-36** `frontend/src/app/settings/channels/page.tsx` — `wabaId` state + WhatsApp Business Account ID field added; `waba_id` passed in connect API call
+
+### Frontend — Avatar System
+- [x] **S-37** `frontend/src/lib/utils.ts` — `getAvatarColor` changed from Tailwind class strings to hex colors (`#7c3aed`, `#2563eb`, etc.) — fixes Tailwind content scan issue where `src/lib/` was excluded
+- [x] **S-38** `frontend/src/components/inbox/ConversationItem.tsx` — avatar uses `style={{ backgroundColor: avatarColor }}` instead of Tailwind class
+- [x] **S-39** `frontend/src/components/messages/MessageBubble.tsx` — inbound messages show actual contact initials + color via `contactName`/`contactId` props; outbound shows agent initials via `agentName`/`agentId` props; avatar alignment changed to `items-center`
+- [x] **S-40** `frontend/src/components/messages/MessageThread.tsx` — accepts `contactName`, `contactId`, `agentName`, `agentId` props and forwards to `MessageBubble`
+- [x] **S-41** `frontend/src/app/inbox/page.tsx` — passes `contact` and `user` info to `MessageThread` for avatar rendering
+- [x] **S-42** `frontend/src/app/inbox/page.tsx` — header contact avatar uses `style={{ backgroundColor }}` inline hex
+
+### Docs
+- [x] **S-43** `docs/email-setup-guide.md` — end-user guide for connecting Gmail via Cloudmailin
+- [x] **S-44** `docs/webchat-setup-guide.md` — embed snippet guide for web chat widget
+- [x] **S-45** `docs/whatsapp-setup-guide.md` — Meta Developer App setup, WABA subscription, phone number ID guide
+
+### Env / Infra
+- [x] **S-46** `.env` + Cloud Run — `WHATSAPP_VERIFY_TOKEN=whatsapp-verify-token` set (platform-level token; per-tenant app secrets stored in DB)
+
+---
+
 ## ⏳ PENDING — Email Inbound via Cloudmailin
 
 > **Context**: Email outbound (SMTP replies) works. Inbound needs Cloudmailin webhook + Gmail forwarding.
@@ -102,29 +140,48 @@ config `LLM_*` / `EMBEDDING_*` / `GEMINI_API_KEY` (alias).
 
 ## 🔄 RESUME HERE — Next Session
 
-### Priority 1 — Test everything works end-to-end
+### 🤖 Priority 1 — AI Agents: Handle Normal Queries Automatically
 
-- [ ] **R-2** Backend sanity import check: `docker-compose exec backend uv run python -c "import src.main"` then `uv run ruff check src`
-- [ ] **R-4** Web Chat smoke test (fastest, no external accounts needed):
-  1. Open `http://localhost:3000/settings/channels` → Web Chat → Create → copy Channel ID
-  2. Send a test message via curl (see `docs/channel-setup-guide.md` Quick Copy-Paste section)
-  3. Verify conversation appears in `http://localhost:3000/inbox`
-  4. Reply from inbox → no errors
-- [ ] **R-4b** AI smoke test (needs Gemini key already set):
-  1. Go to `Settings → Knowledge Base` → upload a text doc (paste some FAQ content)
-  2. Go to `Settings → AI Agents` → enable Support agent
-  3. Send a Web Chat message related to the FAQ
-  4. Verify AI auto-reply appears in inbox
-  5. Check AI run log: `http://localhost:8000/api/v1/ai/runs`
-- [ ] **R-5** If AI agent errors on tool use (AttributeError `message=None`): change `LLM_MODEL` in `.env` to `gemini-2.5-flash` and restart backend (`docker-compose restart backend`)
+**Goal**: Inbound customer messages se AI automatically response kare — no human needed for FAQs
 
-### Priority 2 — WhatsApp testing
+**Current State**: AI infrastructure already built (Phase 4 ✅) — agents exist, knowledge base exists, Celery worker triggers AI on every inbound. Issue is tuning prompts + testing the end-to-end flow.
 
-- [ ] **R-WA-1** Run ngrok: `ngrok http 8000` → get public HTTPS URL
-- [ ] **R-WA-2** Set in `.env`: `WHATSAPP_VERIFY_TOKEN=any_random_string` → `docker-compose restart backend`
-- [ ] **R-WA-3** Meta Developer Dashboard: set webhook URL to `https://YOUR_NGROK_URL/webhooks/whatsapp`, verify token same as above
-- [ ] **R-WA-4** Connect WhatsApp in `Settings → Channels` → fill Phone Number ID + Access Token
-- [ ] **R-WA-5** Send WhatsApp message from personal phone → verify it appears in inbox
+#### Step 1 — Knowledge Base Setup
+- [ ] **AI-1** `Settings → Knowledge Base` → upload FAQ content (paste text or upload PDF)
+  - Test: POST `https://ucaas-api-919679113744.asia-south1.run.app/api/v1/knowledge/documents`
+- [ ] **AI-2** Verify embeddings generated: GET `/api/v1/knowledge/documents` → status should be `ready`
+- [ ] **AI-3** Test semantic search: POST `/api/v1/knowledge/search` with `{"query": "your FAQ question"}`
+
+#### Step 2 — AI Agent Configuration
+- [ ] **AI-4** `Settings → AI Agents` → Support agent → enable + review system prompt
+- [ ] **AI-5** Tune support agent prompt in `backend/src/modules/ai/agents/support.py` — add product context, tone, escalation rules
+- [ ] **AI-6** Review routing agent in `backend/src/modules/ai/agents/router.py` — ensure it correctly classifies: support / sales / billing / escalate-to-human
+
+#### Step 3 — End-to-End Test
+- [ ] **AI-7** Send test message via Web Chat or WhatsApp
+- [ ] **AI-8** Verify AI auto-reply appears in inbox within 5-10 seconds
+- [ ] **AI-9** Check AI run log: GET `/api/v1/ai/runs` — should show tool calls + response
+- [ ] **AI-10** Test escalation: send complex query → AI should escalate → internal note "🤖 AI escalated..." appears
+
+#### Step 4 — Improve AI Response Quality
+- [ ] **AI-11** If responses are generic: add more specific KB documents
+- [ ] **AI-12** If escalation too aggressive: tune confidence threshold in `backend/src/modules/ai/agents/escalation.py`
+- [ ] **AI-13** Test multi-turn: send follow-up questions → AI should maintain context within conversation
+- [ ] **AI-14** (Optional) Add custom tools: `get_order_status` with real data source
+
+#### Step 5 — Production AI Config
+- [ ] **AI-15** Verify `GEMINI_API_KEY` is set in Cloud Run env vars
+- [ ] **AI-16** Verify `LLM_MODEL=gemini-2.5-flash` (or `gemini-2.0-flash-lite` for cost savings)
+- [ ] **AI-17** Monitor Cloud Run Celery worker logs for AI task errors
+
+---
+
+### Priority 2 — Pending Channel Tests
+
+- [x] **R-WA-1** WhatsApp connected and working (WABA subscribed ✅)
+- [ ] **E-2** Cloudmailin setup: set HTTP target `https://ucaas-api-919679113744.asia-south1.run.app/webhooks/email` → Format: Multipart Normalized
+- [ ] **E-3** Gmail forwarding to Cloudmailin address
+- [ ] **E-4** Test email inbound end-to-end
 
 ### Priority 3 — Production Deployment
 
