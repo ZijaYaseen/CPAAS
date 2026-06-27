@@ -19,6 +19,7 @@ from src.modules.channels import service
 from src.modules.channels.models import ChannelAccount, ChannelType
 from src.modules.channels.schemas import (
     ChannelAccountResponse,
+    ChannelCredentialsUpdateRequest,
     EmailConnectRequest,
     WebChatCreateRequest,
     WebChatMessageRequest,
@@ -106,6 +107,50 @@ async def create_webchat(payload: WebChatCreateRequest, db: TenantDB, user: Curr
         credentials={},
         configuration={},
     )
+    return ChannelAccountResponse.model_validate(account)
+
+
+@router.patch("/{channel_id}/credentials", response_model=ChannelAccountResponse)
+async def update_channel_credentials(
+    channel_id: uuid.UUID,
+    payload: ChannelCredentialsUpdateRequest,
+    db: TenantDB,
+    user: CurrentUser,
+):
+    """Update sensitive credentials (access token, password) without reconnecting."""
+    from src.core.crypto import encrypt_dict
+    account = await db.scalar(select(ChannelAccount).where(ChannelAccount.id == channel_id))
+    if account is None:
+        from src.core.exceptions import NotFoundError
+        raise NotFoundError("Channel not found")
+    creds = service.get_credentials(account)
+    if payload.access_token is not None:
+        creds["access_token"] = payload.access_token
+    if payload.app_secret is not None:
+        creds["app_secret"] = payload.app_secret
+    if payload.smtp_password is not None:
+        creds["smtp_password"] = payload.smtp_password
+    account.credentials = {"_enc": encrypt_dict(creds)}
+    await db.flush()
+
+    # Re-subscribe WABA webhook after token refresh
+    if payload.access_token and account.channel_type == "whatsapp":
+        waba_id = creds.get("waba_id") or (account.configuration or {}).get("waba_id")
+        if waba_id:
+            import httpx
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.post(
+                        f"https://graph.facebook.com/v21.0/{waba_id}/subscribed_apps",
+                        headers={"Authorization": f"Bearer {payload.access_token}"},
+                    )
+                if resp.status_code == 200:
+                    logger.info("whatsapp_waba_resubscribed", waba_id=waba_id)
+                else:
+                    logger.warning("whatsapp_waba_resubscribe_failed", status=resp.status_code)
+            except Exception as exc:
+                logger.warning("whatsapp_waba_resubscribe_error", error=str(exc))
+
     return ChannelAccountResponse.model_validate(account)
 
 

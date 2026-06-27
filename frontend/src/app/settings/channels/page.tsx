@@ -14,6 +14,8 @@ import {
   HiShieldCheck,
   HiExternalLink,
   HiX,
+  HiPencil,
+  HiTrash,
 } from "react-icons/hi";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -591,6 +593,94 @@ function WhatsAppForm({
   );
 }
 
+// ─── Edit credentials form (token refresh for connected channels) ─────────────
+
+function EditCredentialsForm({
+  channel,
+  onDone,
+  onCancel,
+}: {
+  channel: Channel;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [token,    setToken]    = useState("");
+  const [password, setPassword] = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+
+  const isWhatsApp = channel.channel_type === "whatsapp";
+  const isEmail    = channel.channel_type === "email";
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await api.patch(`/channels/${channel.id}/credentials`, {
+        ...(isWhatsApp && token    ? { access_token: token }    : {}),
+        ...(isEmail    && password ? { smtp_password: password } : {}),
+      });
+      setSaved(true);
+      setTimeout(() => { setSaved(false); onDone(); }, 1500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (saved) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-emerald-700 font-medium">
+        <HiCheckCircle className="h-5 w-5" /> Credentials updated!
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 pt-3 border-t mt-3">
+      <p className="text-sm font-semibold text-foreground">
+        Update credentials — <span className="font-normal text-muted-foreground">{channel.name}</span>
+      </p>
+      {isWhatsApp && (
+        <FormField
+          label="New Access Token"
+          placeholder="EAAxxxxxxxxxxxxx"
+          value={token}
+          onChange={setToken}
+          type="password"
+          hint="Paste the new token from Meta → WhatsApp → API Setup"
+          required
+        />
+      )}
+      {isEmail && (
+        <FormField
+          label="New App Password"
+          placeholder="16-character app password"
+          value={password}
+          onChange={setPassword}
+          type="password"
+          hint="Google Account → Security → App Passwords"
+          required
+        />
+      )}
+      <div className="flex items-center gap-3">
+        <PrimaryButton
+          onClick={submit}
+          disabled={isWhatsApp ? !token : !password}
+          loading={saving}
+          color={isWhatsApp ? "emerald" : "blue"}
+        >
+          Save Token
+        </PrimaryButton>
+        <button
+          onClick={onCancel}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ChannelsPage() {
@@ -598,6 +688,7 @@ export default function ChannelsPage() {
   const [activeKind, setActiveKind]   = useState<ChannelKind | null>(null);
   const [loading, setLoading]         = useState(false);
   const [toast, setToast]             = useState("");
+  const [editingId, setEditingId]     = useState<string | null>(null);
 
   const reload = async () => {
     const { data } = await api.get<Channel[]>("/channels");
@@ -611,6 +702,14 @@ export default function ChannelsPage() {
     setToast(`${ch.name} connected successfully`);
     setTimeout(() => setToast(""), 4000);
     if (ch.channel_type !== "webchat") setActiveKind(null);
+  };
+
+  const handleDelete = async (ch: Channel) => {
+    if (!confirm(`Remove "${ch.name}"?`)) return;
+    await api.delete(`/channels/${ch.id}`);
+    void reload();
+    setToast(`${ch.name} disconnected`);
+    setTimeout(() => setToast(""), 3000);
   };
 
   const channelsByType = (kind: string) => channels.filter((c) => c.channel_type === kind);
@@ -688,9 +787,37 @@ export default function ChannelsPage() {
               {connected.length > 0 && !isOpen && (
                 <div className="border-t">
                   {connected.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between border-b last:border-0 px-5 py-3 bg-secondary/30">
-                      <span className="text-sm font-medium">{c.name}</span>
-                      <Badge color="bg-emerald-100 text-emerald-700">Active</Badge>
+                    <div key={c.id} className="border-b last:border-0 px-5 py-3 bg-secondary/30">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">{c.name}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge color="bg-emerald-100 text-emerald-700">Active</Badge>
+                          {c.channel_type !== "webchat" && (
+                            <button
+                              onClick={() => setEditingId(editingId === c.id ? null : c.id)}
+                              title="Update credentials"
+                              className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                            >
+                              <HiPencil className="h-3.5 w-3.5" />
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(c)}
+                            title="Disconnect channel"
+                            className="flex items-center gap-1 rounded-md border border-rose-200 px-2 py-1 text-xs font-medium text-rose-500 hover:bg-rose-50 transition-colors"
+                          >
+                            <HiTrash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {editingId === c.id && (
+                        <EditCredentialsForm
+                          channel={c}
+                          onDone={() => { setEditingId(null); void reload(); setToast("Token updated successfully"); setTimeout(() => setToast(""), 3000); }}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

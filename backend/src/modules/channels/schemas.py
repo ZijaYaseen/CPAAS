@@ -36,6 +36,12 @@ class ChannelAccountResponse(BaseModel):
     is_active: bool
 
 
+class ChannelCredentialsUpdateRequest(BaseModel):
+    access_token: str | None = None
+    app_secret: str | None = None
+    smtp_password: str | None = None
+
+
 class WebChatMessageRequest(BaseModel):
     channel_account_id: uuid.UUID
     session_id: str
