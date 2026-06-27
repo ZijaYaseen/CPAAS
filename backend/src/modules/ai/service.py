@@ -21,6 +21,7 @@ from src.modules.ai.agents.handoffs import build_agent_graph
 from src.modules.ai.context import ToolContext, current_tool_context
 from src.modules.ai.models import MVP_AGENTS, AgentType, AIConfiguration, AIRun, AIToolCall
 from src.modules.inbox.models import Conversation, Message, MessageDirection, SenderType
+from src.modules.knowledge import service as knowledge_service
 
 logger = get_logger("ai")
 
@@ -106,10 +107,20 @@ async def run_ai(
     if not ok_in:
         escalated, reason = True, reason_in
     else:
+        # Pre-fetch KB context and inject into prompt — avoids tool calls entirely
+        try:
+            kb_results = await knowledge_service.search(db, query=prompt, top_k=5)
+            kb_context = "\n\n---\n\n".join(r["content"] for r in kb_results) if kb_results else ""
+        except Exception:  # noqa: BLE001
+            kb_context = ""
+
         ctx = ToolContext(tenant_id=str(tenant_id), session=db)
         token = current_tool_context.set(ctx)
         try:
-            result = await Runner.run(build_agent_graph(await _config_map(db)), input=prompt)
+            result = await Runner.run(
+                build_agent_graph(await _config_map(db), kb_context=kb_context),
+                input=prompt,
+            )
             response = (result.final_output or "").strip() or None
         except Exception as exc:  # noqa: BLE001 — never crash on model/tool failure
             logger.warning("ai_run_failed", error=str(exc))

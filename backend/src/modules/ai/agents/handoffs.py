@@ -11,11 +11,15 @@ from agents import Agent
 from src.modules.ai.agents.support import build_support_agent
 
 
-def build_agent_graph(configs: dict[str, dict]) -> Agent:
+def build_agent_graph(configs: dict[str, dict], kb_context: str = "") -> Agent:
     """Return the Support agent as the single entry point for the MVP.
 
-    ``configs`` maps agent_type -> {system_prompt}. Missing entries fall back to
-    defaults defined in build_support_agent.
+    ``configs`` maps agent_type -> {system_prompt}. ``kb_context`` is the
+    pre-fetched knowledge base text injected into the system prompt so no
+    tool calls are needed during the run.
     """
     support_cfg = configs.get("support", {})
-    return build_support_agent(system_prompt=support_cfg.get("system_prompt"))
+    return build_support_agent(
+        system_prompt=support_cfg.get("system_prompt"),
+        kb_context=kb_context,
+    )
