@@ -465,21 +465,32 @@ function EmailForm({
 
   return (
     <div className="space-y-5">
-      <InfoBox type="warning">
-        <p className="font-semibold">Using Gmail? Generate an App Password first.</p>
-        <p className="mt-0.5 text-xs">
-          Go to Google Account → Security → App Passwords and generate one for &quot;Mail&quot;.
-          Use that 16-character password below, not your regular Gmail password.
-        </p>
-        <a
-          href="https://myaccount.google.com/apppasswords"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2"
-        >
-          Open App Passwords <HiExternalLink className="h-3 w-3" />
-        </a>
-      </InfoBox>
+      {/* App Password guide */}
+      <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <HiLightningBolt className="h-4 w-4 shrink-0 mt-0.5 text-blue-600" />
+          <div>
+            <p className="text-sm font-semibold text-blue-800">Step 1 — Generate a Gmail App Password</p>
+            <p className="mt-0.5 text-xs text-blue-700">Gmail blocks regular passwords for SMTP. You need a special App Password — takes 1 minute.</p>
+          </div>
+        </div>
+        <ol className="space-y-1.5 ml-6">
+          {[
+            <>Go to <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2 inline-flex items-center gap-0.5 text-blue-700">myaccount.google.com/security <HiExternalLink className="h-3 w-3" /></a></>,
+            <>Make sure <strong>2-Step Verification is ON</strong> (required for App Passwords)</>,
+            <>Search for <strong>App passwords</strong> at the top and click it</>,
+            <>Select app: <strong>Mail</strong> · Select device: <strong>Other</strong> · type any name · click <strong>Generate</strong></>,
+            <>A <strong>16-character password</strong> appears — copy it now, it won&apos;t show again</>,
+          ].map((s, i) => (
+            <li key={i} className="flex gap-2 text-xs text-blue-800">
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800">{i + 1}</span>
+              <span className="leading-relaxed">{s}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="ml-6 text-[11px] text-blue-600">Tip: spaces in the password don&apos;t matter — paste it as-is.</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">Step 2 — Fill in your email details</p>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField label="Channel Name" placeholder="Support Inbox" value={name} onChange={setName} required />
