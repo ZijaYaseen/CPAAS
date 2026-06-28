@@ -8,7 +8,7 @@ export default function CampaignsPage() {
     <PostMvpPage
       icon={Megaphone}
       title="Broadcast Campaigns"
-      description="Send targeted bulk messages to segmented contact lists across WhatsApp, Email, and SMS — with real-time delivery tracking."
+      description="Send targeted bulk messages to segmented contact lists across WhatsApp, Email, and SMS with real-time delivery tracking."
       color="bg-orange-100 text-orange-600"
       phase="Post-MVP · Phase 5 (Weeks 15–16)"
       features={[

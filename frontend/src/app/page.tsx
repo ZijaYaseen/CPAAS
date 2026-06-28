@@ -19,7 +19,7 @@ const features = [
       </svg>
     ),
     title: "AI Powered Automation",
-    desc: "Gemini AI reads your knowledge base and responds instantly to routine queries — 24 hours a day, 7 days a week.",
+    desc: "Gemini AI reads your knowledge base and responds instantly to routine queries. 24 hours a day, 7 days a week.",
   },
   {
     icon: (
@@ -269,7 +269,7 @@ export default function Home() {
               Built for modern support teams
             </h2>
             <p className="text-gray-500 text-lg max-w-xl mx-auto">
-              From AI automation to real time analytics — CPaaS has every tool your team needs to deliver exceptional customer experiences.
+              From AI automation to real time analytics. CPaaS has every tool your team needs to deliver exceptional customer experiences.
             </p>
           </div>
 
