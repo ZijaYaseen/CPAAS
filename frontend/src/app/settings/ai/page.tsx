@@ -47,7 +47,7 @@ export default function AISettingsPage() {
 
       <p className="text-sm text-muted-foreground">
         MVP: agents are read-only (search knowledge base, look up contacts/orders). They cannot
-        modify data — write actions are escalated to a human.
+        modify data. Write actions are escalated to a human.
       </p>
 
       {configs.map((c) => (
