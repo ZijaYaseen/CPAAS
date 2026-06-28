@@ -460,7 +460,7 @@ function EmailForm({
         <p className="font-semibold">Using Gmail? Generate an App Password first.</p>
         <p className="mt-0.5 text-xs">
           Go to Google Account → Security → App Passwords and generate one for &quot;Mail&quot;.
-          Use that 16-character password below — not your regular Gmail password.
+          Use that 16-character password below, not your regular Gmail password.
         </p>
         <a
           href="https://myaccount.google.com/apppasswords"
