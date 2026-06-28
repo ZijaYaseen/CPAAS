@@ -4,6 +4,7 @@ import uuid
 
 from src.celery_app import celery_app
 from src.core.database import set_tenant_context
+from src.core.events import publish_event
 from src.core.logging import get_logger
 from src.modules.knowledge import service as knowledge_service
 from src.workers.db import run_async
@@ -26,6 +27,8 @@ def process(self, tenant_id: str, document_id: str) -> int:
     try:
         count = run_async(_run)
         logger.info("document_processed", document_id=document_id, chunks=count)
+        publish_event(tenant_id, "document_updated", {"document_id": document_id, "status": "ready"})
         return count
     except Exception as exc:  # noqa: BLE001
+        publish_event(tenant_id, "document_updated", {"document_id": document_id, "status": "error"})
         raise self.retry(exc=exc) from exc

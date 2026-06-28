@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWebSocket, type RealtimeEvent } from "@/contexts/WebSocketContext";
@@ -70,6 +70,22 @@ export default function InboxPage() {
     });
     return unsub;
   }, [subscribe, active, loadConversations, loadMessages]);
+
+  // Polling fallback: re-fetch messages every 5 s when a conversation is open.
+  // Catches AI replies / handoff notes if the WS event was missed.
+  const pollMsgRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (pollMsgRef.current) clearInterval(pollMsgRef.current);
+    if (active) {
+      pollMsgRef.current = setInterval(() => void loadMessages(active.id), 5000);
+    }
+    return () => {
+      if (pollMsgRef.current) {
+        clearInterval(pollMsgRef.current);
+        pollMsgRef.current = null;
+      }
+    };
+  }, [active, loadMessages]);
 
   const onSelect = async (c: Conversation) => {
     setActive(c);
