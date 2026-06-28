@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const DEFAULT_CHANNEL_ID = "6832096d-e8ec-433f-bb1d-c9891ea5a377";
+const DEFAULT_CHANNEL_ID = "";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const POLL_INTERVAL = 3000;
 
