@@ -73,27 +73,28 @@ def get_credentials(account: ChannelAccount) -> dict:
 # ---- Inbound ----
 
 
-async def _resolve_account(
+async def _resolve_accounts(
     db: AsyncSession, *, channel_type: str, hint: str | None
-) -> ChannelAccount | None:
-    """Find the channel account an inbound message belongs to (cross-tenant lookup)."""
+) -> list[ChannelAccount]:
+    """Return ALL active channel accounts that match the inbound hint (cross-tenant).
+
+    No fallback — if no exact match, return empty so the caller logs a warning
+    and drops the message rather than routing it to the wrong tenant.
+    """
     base_stmt = select(ChannelAccount).where(
         ChannelAccount.channel_type == channel_type, ChannelAccount.is_active.is_(True)
     )
     if channel_type == ChannelType.whatsapp.value and hint:
-        return await db.scalar(
+        return list((await db.scalars(
             base_stmt.where(ChannelAccount.configuration["phone_number_id"].astext == hint)
-        )
+        )).all())
     if channel_type == ChannelType.email.value and hint:
-        # Try exact inbound_address match first (supports multiple email channels)
-        account = await db.scalar(
-            base_stmt.where(ChannelAccount.configuration["inbound_address"].astext == hint)
-        )
-        if account:
-            return account
-        # Fallback: first active email channel (works when only one email is connected)
-        return await db.scalar(base_stmt)
-    return await db.scalar(base_stmt)
+        # Normalise: strip display name ("Zija <zija@gmail.com>" → "zija@gmail.com")
+        addr = hint.split("<")[-1].strip(">").strip().lower() if "<" in hint else hint.strip().lower()
+        return list((await db.scalars(
+            base_stmt.where(ChannelAccount.configuration["inbound_address"].astext == addr)
+        )).all())
+    return []
 
 
 async def process_inbound(db: AsyncSession, *, channel_type: str, payload: dict) -> int:
@@ -107,13 +108,14 @@ async def process_inbound(db: AsyncSession, *, channel_type: str, payload: dict)
             if channel_type == ChannelType.whatsapp.value
             else inbound.channel_metadata.get("to")
         )
-        account = await _resolve_account(db, channel_type=channel_type, hint=hint)
-        if account is None:
+        accounts = await _resolve_accounts(db, channel_type=channel_type, hint=hint)
+        if not accounts:
             logger.warning("inbound_no_channel_account", channel_type=channel_type, hint=hint)
             continue
-        await set_tenant_context(db, str(account.tenant_id))
-        await inbox_service.ingest_inbound(db, channel_account=account, inbound=inbound)
-        count += 1
+        for account in accounts:
+            await set_tenant_context(db, str(account.tenant_id))
+            await inbox_service.ingest_inbound(db, channel_account=account, inbound=inbound)
+            count += 1
     return count
 
 
