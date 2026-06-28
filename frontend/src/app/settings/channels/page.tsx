@@ -306,7 +306,7 @@ function WebChatForm({
 
 function EmailInboundGuide({ channelId }: { channelId: string }) {
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-  const webhookUrl = `${apiBase}/api/v1/webhooks/email`;
+  const webhookUrl = `${apiBase}/webhooks/email`;
 
   const appsScript = `// Paste this in script.google.com → New Project
 const WEBHOOK_URL = "${webhookUrl}";
@@ -710,6 +710,7 @@ export default function ChannelsPage() {
   const [toast, setToast]             = useState("");
   const [editingId, setEditingId]     = useState<string | null>(null);
   const [scriptChannelId, setScriptChannelId] = useState<string | null>(null);
+  const [inboundGuideId, setInboundGuideId]   = useState<string | null>(null);
 
   const reload = async () => {
     const { data } = await api.get<Channel[]>("/channels");
@@ -722,7 +723,7 @@ export default function ChannelsPage() {
     void reload();
     setToast(`${ch.name} connected successfully`);
     setTimeout(() => setToast(""), 4000);
-    if (ch.channel_type !== "webchat") setActiveKind(null);
+    if (ch.channel_type === "whatsapp") setActiveKind(null);
   };
 
   const handleDelete = async (ch: Channel) => {
@@ -823,14 +824,26 @@ export default function ChannelsPage() {
                               Get Script
                             </button>
                           ) : (
-                            <button
-                              onClick={() => setEditingId(editingId === c.id ? null : c.id)}
-                              title="Update credentials"
-                              className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                            >
-                              <HiPencil className="h-3.5 w-3.5" />
-                              Edit
-                            </button>
+                            <>
+                              {c.channel_type === "email" && (
+                                <button
+                                  onClick={() => setInboundGuideId(inboundGuideId === c.id ? null : c.id)}
+                                  title="Inbound email setup"
+                                  className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-blue-600 border-blue-200 hover:bg-blue-50 transition-colors"
+                                >
+                                  <HiMail className="h-3.5 w-3.5" />
+                                  Inbound Setup
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setEditingId(editingId === c.id ? null : c.id)}
+                                title="Update credentials"
+                                className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                              >
+                                <HiPencil className="h-3.5 w-3.5" />
+                                Edit
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => handleDelete(c)}
@@ -847,6 +860,9 @@ export default function ChannelsPage() {
                           onDone={() => { setEditingId(null); void reload(); setToast("Token updated successfully"); setTimeout(() => setToast(""), 3000); }}
                           onCancel={() => setEditingId(null)}
                         />
+                      )}
+                      {inboundGuideId === c.id && (
+                        <EmailInboundGuide channelId={c.id} />
                       )}
                       {scriptChannelId === c.id && (
                         <div className="mt-3">
