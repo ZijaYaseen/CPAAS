@@ -304,91 +304,100 @@ function WebChatForm({
   );
 }
 
-function EmailInboundGuide({ channelId }: { channelId: string }) {
+function EmailInboundGuide({ channelId: _channelId }: { channelId: string }) {
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   const webhookUrl = `${apiBase}/webhooks/email`;
 
-  const appsScript = `// Paste this in script.google.com → New Project
-const WEBHOOK_URL = "${webhookUrl}";
-const CHANNEL_ID  = "${channelId}";
-
-function forwardToInbox() {
-  const threads = GmailApp.search("is:unread label:inbox", 0, 20);
-  threads.forEach(thread => {
-    const msg = thread.getMessages().slice(-1)[0];
-    UrlFetchApp.fetch(WEBHOOK_URL, {
-      method: "post",
-      contentType: "application/x-www-form-urlencoded",
-      payload: {
-        from:               msg.getFrom(),
-        to:                 msg.getTo(),
-        subject:            msg.getSubject(),
-        text:               msg.getPlainBody(),
-        message_id:         msg.getId(),
-        channel_account_id: CHANNEL_ID,
-      },
-      muteHttpExceptions: true,
-    });
-    thread.markRead();
-  });
-}`;
+  const steps: { title: string; body: React.ReactNode }[] = [
+    {
+      title: "Copy your Webhook URL",
+      body: (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">This URL tells Cloudmailin where to send incoming emails.</p>
+          <CopySnippet value={webhookUrl} label="Copy URL" />
+        </div>
+      ),
+    },
+    {
+      title: "Create a Cloudmailin address",
+      body: (
+        <ol className="space-y-1.5 text-xs text-foreground">
+          {[
+            <>Go to <a href="https://www.cloudmailin.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2 inline-flex items-center gap-0.5">cloudmailin.com <HiExternalLink className="h-3 w-3" /></a> → Sign up / Login</>,
+            <>Click <strong>Add Address</strong></>,
+            <>In <strong>Target URL</strong>, paste the Webhook URL above</>,
+            <>Under <strong>Format</strong>, select <strong>Multipart – Normalized</strong></>,
+            <>Click <strong>Create</strong> — Cloudmailin gives you an address like <code className="rounded bg-slate-100 px-1">a1b2c3@cloudmailin.net</code> — <strong>copy it</strong></>,
+          ].map((s, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">{i + 1}</span>
+              <span className="leading-relaxed">{s}</span>
+            </li>
+          ))}
+        </ol>
+      ),
+    },
+    {
+      title: "Forward your Gmail to Cloudmailin",
+      body: (
+        <ol className="space-y-1.5 text-xs text-foreground">
+          {[
+            <>Open <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2 inline-flex items-center gap-0.5">Gmail <HiExternalLink className="h-3 w-3" /></a> → <strong>Settings (⚙)</strong> → <strong>See all settings</strong></>,
+            <>Go to the <strong>Forwarding and POP/IMAP</strong> tab</>,
+            <>Click <strong>Add a forwarding address</strong> → paste your Cloudmailin address</>,
+            <>Gmail sends a confirmation email — open <strong>Cloudmailin → Recent Deliveries</strong>, find the email, click the confirmation link inside</>,
+            <>Back in Gmail Forwarding tab → select <strong>"Forward a copy to [Cloudmailin address]"</strong> → <strong>Save Changes</strong></>,
+          ].map((s, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">{i + 1}</span>
+              <span className="leading-relaxed">{s}</span>
+            </li>
+          ))}
+        </ol>
+      ),
+    },
+    {
+      title: "Test it",
+      body: (
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Ask someone to send an email to your Gmail address. Within a few seconds it should appear as a new conversation in your <strong>Inbox</strong>. Reply from there — the customer receives it from your Gmail address.
+        </p>
+      ),
+    },
+  ];
 
   return (
-    <div className="mt-6 space-y-5 border-t pt-6">
+    <div className="mt-4 space-y-4 border-t pt-5">
       <div>
-        <p className="text-sm font-semibold text-foreground">Step 2 — Enable Inbound Emails</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          So that emails sent to your Gmail appear here in the inbox, set up a 2-minute Google Apps Script.
-          No domain or paid service required.
+        <p className="text-sm font-semibold text-foreground">Inbound Email Setup</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          So customer emails appear in your inbox — takes about 5 minutes, free.
         </p>
       </div>
 
       <InfoBox type="tip">
-        <p className="font-semibold">How it works</p>
+        <p className="font-semibold text-xs">How it works</p>
         <p className="mt-0.5 text-xs">
-          A Google Apps Script runs every minute, checks your Gmail for new emails, and forwards them
-          to this inbox automatically. It uses your existing Gmail — no extra account needed.
+          Customer emails your Gmail → Gmail forwards to Cloudmailin → Cloudmailin calls your webhook → message appears in inbox instantly.
         </p>
       </InfoBox>
 
-      {/* Webhook URL */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your Webhook URL</p>
-        <CopySnippet value={webhookUrl} label="Copy URL" />
-      </div>
-
-      {/* Step by step */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Setup Steps</p>
-        <ol className="space-y-2 text-sm text-foreground">
-          {[
-            <>Go to <a href="https://script.google.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2 inline-flex items-center gap-0.5">script.google.com <HiExternalLink className="h-3 w-3" /></a> and click <strong>New Project</strong></>,
-            <>Paste the script below into the editor and click <strong>Save</strong></>,
-            <>Click the <strong>clock icon (Triggers)</strong> on the left sidebar</>,
-            <>Add trigger: function <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">forwardToInbox</code> · Time-driven · Minutes timer · <strong>Every minute</strong></>,
-            <>Click <strong>Save</strong> and allow permissions when prompted</>,
-            <>Send a test email to your Gmail and watch it appear here within 60 seconds ✅</>,
-          ].map((step, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[11px] font-bold text-blue-700">{i + 1}</span>
-              <span className="leading-relaxed">{step}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      {/* Script */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Apps Script (pre-filled)</p>
-        <CopySnippet value={appsScript} label="Copy script" />
+      <div className="space-y-4">
+        {steps.map((step, i) => (
+          <div key={i} className="flex gap-3">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">{i + 1}</span>
+            <div className="flex-1 space-y-2 min-w-0">
+              <p className="text-sm font-semibold">{step.title}</p>
+              {step.body}
+            </div>
+          </div>
+        ))}
       </div>
 
       <InfoBox type="warning">
-        <p className="font-semibold">Production / Custom Domain?</p>
+        <p className="font-semibold text-xs">Using a custom domain? (support@company.com)</p>
         <p className="mt-0.5 text-xs">
-          If your client has their own domain (e.g. support@company.com), they can point their domain&apos;s
-          MX record to SendGrid Inbound Parse and use the webhook URL above — no Apps Script needed.
-          This scales to thousands of emails per day.
+          Instead of Gmail forwarding, set your domain&apos;s MX record to point to Cloudmailin. Same webhook URL, no Gmail needed. Cloudmailin docs explain this under <strong>Custom Domains</strong>.
         </p>
       </InfoBox>
     </div>
