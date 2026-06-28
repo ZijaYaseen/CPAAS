@@ -16,6 +16,7 @@ import {
   HiX,
   HiPencil,
   HiTrash,
+  HiCode,
 } from "react-icons/hi";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -209,6 +210,29 @@ const CHANNEL_CONFIGS: ChannelConfig[] = [
 
 // ─── Individual forms ─────────────────────────────────────────────────────────
 
+function WebChatEmbedScript({ channel }: { channel: Channel }) {
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const frontBase = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const snippet = `<script src="${frontBase}/webchat-widget.js" data-account="${channel.id}" data-api="${apiBase}"></script>`;
+  return (
+    <div className="space-y-4">
+      <InfoBox type="success">
+        <p className="font-semibold">Widget ready!</p>
+        <p className="mt-0.5">Copy this script tag and paste it before the closing <code className="rounded bg-emerald-100 px-1">&lt;/body&gt;</code> tag on your website.</p>
+      </InfoBox>
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">Embed Script</p>
+        <CopySnippet value={snippet} label="Copy script" />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">Channel ID</p>
+        <CopySnippet value={channel.id} label="Copy ID" />
+        <p className="text-xs text-muted-foreground">Use this ID if you are integrating the widget manually.</p>
+      </div>
+    </div>
+  );
+}
+
 function WebChatForm({
   onSuccess,
   loading,
@@ -220,39 +244,30 @@ function WebChatForm({
 }) {
   const [name, setName] = useState("");
   const [done, setDone] = useState<Channel | null>(null);
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-  const frontBase = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const [error, setError] = useState("");
 
   const submit = async () => {
     if (!name.trim()) return;
     setLoading(true);
+    setError("");
     try {
       const { data } = await api.post<Channel>("/channels/webchat/create", { name });
       setDone(data);
       setName("");
       onSuccess(data);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: { message?: string } } } })
+        ?.response?.data?.error?.message;
+      setError(msg ?? "Failed to create widget. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   if (done) {
-    const snippet = `<script src="${frontBase}/webchat-widget.js" data-account="${done.id}" data-api="${apiBase}"></script>`;
     return (
       <div className="space-y-4">
-        <InfoBox type="success">
-          <p className="font-semibold">Widget created successfully!</p>
-          <p className="mt-0.5">Copy the snippet below and paste it before the closing body tag on your website.</p>
-        </InfoBox>
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium">Embed snippet</p>
-          <CopySnippet value={snippet} label="Copy snippet" />
-        </div>
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium">Channel ID</p>
-          <CopySnippet value={done.id} label="Copy ID" />
-          <p className="text-xs text-muted-foreground">Use this ID if you are integrating the widget manually.</p>
-        </div>
+        <WebChatEmbedScript channel={done} />
         <button
           onClick={() => setDone(null)}
           className="text-sm text-primary underline underline-offset-2"
@@ -276,6 +291,11 @@ function WebChatForm({
         hint="This name appears in your connected channels list."
         required
       />
+      {error && (
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
       <PrimaryButton onClick={submit} disabled={!name.trim()} loading={loading} color="violet">
         <HiPlus className="h-4 w-4" />
         Create Widget
@@ -689,6 +709,7 @@ export default function ChannelsPage() {
   const [loading, setLoading]         = useState(false);
   const [toast, setToast]             = useState("");
   const [editingId, setEditingId]     = useState<string | null>(null);
+  const [scriptChannelId, setScriptChannelId] = useState<string | null>(null);
 
   const reload = async () => {
     const { data } = await api.get<Channel[]>("/channels");
@@ -792,7 +813,16 @@ export default function ChannelsPage() {
                         <span className="text-sm font-medium">{c.name}</span>
                         <div className="flex items-center gap-2 shrink-0">
                           <Badge color="bg-emerald-100 text-emerald-700">Active</Badge>
-                          {c.channel_type !== "webchat" && (
+                          {c.channel_type === "webchat" ? (
+                            <button
+                              onClick={() => setScriptChannelId(scriptChannelId === c.id ? null : c.id)}
+                              title="Get embed script"
+                              className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                            >
+                              <HiCode className="h-3.5 w-3.5" />
+                              Get Script
+                            </button>
+                          ) : (
                             <button
                               onClick={() => setEditingId(editingId === c.id ? null : c.id)}
                               title="Update credentials"
@@ -817,6 +847,11 @@ export default function ChannelsPage() {
                           onDone={() => { setEditingId(null); void reload(); setToast("Token updated successfully"); setTimeout(() => setToast(""), 3000); }}
                           onCancel={() => setEditingId(null)}
                         />
+                      )}
+                      {scriptChannelId === c.id && (
+                        <div className="mt-3">
+                          <WebChatEmbedScript channel={c} />
+                        </div>
                       )}
                     </div>
                   ))}
