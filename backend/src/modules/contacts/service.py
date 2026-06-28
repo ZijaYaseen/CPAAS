@@ -28,14 +28,19 @@ async def get_or_create_contact(
     email = email.strip().lower() if email else None  # normalize for reliable dedup
 
     if email:
-        contact = await db.scalar(select(Contact).where(Contact.email == email))
+        contact = await db.scalar(
+            select(Contact).where(Contact.tenant_id == tenant_id, Contact.email == email)
+        )
     if contact is None and phone:
-        contact = await db.scalar(select(Contact).where(Contact.phone == phone))
+        contact = await db.scalar(
+            select(Contact).where(Contact.tenant_id == tenant_id, Contact.phone == phone)
+        )
     if contact is None and channel_identifier:
         # Match on a previously-seen channel identifier stored in metadata.
         contact = await db.scalar(
             select(Contact).where(
-                Contact.extra_data["channels"].op("->>")(channel_type) == channel_identifier
+                Contact.tenant_id == tenant_id,
+                Contact.extra_data["channels"].op("->>")(channel_type) == channel_identifier,
             )
         )
 

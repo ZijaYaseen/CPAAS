@@ -21,9 +21,51 @@
 - [x] **P-4 Enable pgvector on Neon** — DONE: `vector` extension enabled (migration `0003`).
 - [x] **P-5 GEMINI_API_KEY set** in `.env` — Gemini used instead of OpenAI. `GEMINI_API_KEY` + `LLM_MODEL=gemini-3.1-flash-lite` set.
 - [~] **P-6 Smoke-test** — auth flow verified ✅. Docker stack running (redis + backend + worker) ✅. Web Chat channel connect + AI smoke test still TODO (R-4).
-- [ ] **P-7 (Hardening, deferred)** RLS is advisory in MVP (app connects as DB owner). Phase 11 adds a restricted DB role + `FORCE ROW LEVEL SECURITY`. Until then, tenant isolation also relies on the service layer.
+- [x] **P-7 Tenant Isolation Hardening (DONE 2026-06-28)** — FORCE ROW LEVEL SECURITY applied to all 8 tenant tables via migration `0005_force_rls`. RLS policy fixed in `0006_fix_rls_null_context` to allow cross-tenant access for webhook/worker sessions (no tenant context). App-level `tenant_id` filters added to ALL service queries (inbox, contacts, channels, ai, knowledge).
 
 **Code status**: Phase 1 ✅ · Phase 2 ✅ · Phase 3 Inbox ✅ · Phase 4 AI ✅ · Phase 11 Hardening ✅ · Post-MVP (5–10) ⬜
+
+---
+
+## 🔒 MANDATORY RULE — Tenant Isolation Checklist (Every New Feature)
+
+> Every new service function and router endpoint MUST follow this checklist.
+> Missing tenant_id = data leak across organizations. This is not optional.
+
+### Service Layer (backend/src/modules/*/service.py)
+- [ ] Every `select(Model)` query includes `.where(Model.tenant_id == tenant_id)`
+- [ ] `tenant_id` is a required parameter on every function that queries tenant-scoped data
+- [ ] Cross-tenant lookups (webhooks, workers) are explicitly justified in a comment
+
+### Router Layer (backend/src/modules/*/router.py)
+- [ ] Every service call passes `tenant_id=user.tenant_id` (from `CurrentUser`)
+- [ ] Single-resource endpoints (GET/PUT/DELETE by ID) include `Model.tenant_id == user.tenant_id` to prevent cross-tenant access
+
+### Database Layer (alembic/versions/)
+- [ ] Every new tenant-scoped table has `tenant_id` column + FK to `tenants.id`
+- [ ] Every new migration runs `ALTER TABLE <name> ENABLE ROW LEVEL SECURITY` + `CREATE POLICY` + `FORCE ROW LEVEL SECURITY`
+- [ ] RLS policy uses NULL-safe check: `current_setting('app.current_tenant_id', true) IS NULL OR tenant_id = current_setting(...)::uuid`
+
+### Worker Layer (backend/src/workers/*.py)
+- [ ] Every worker calls `await set_tenant_context(db, tenant_id)` before any tenant-scoped query
+- [ ] `tenant_id` is passed as a task argument (never fetched without context)
+
+---
+
+## 🟢 COMPLETED (2026-06-28) — Multi-Tenant Data Isolation Fix
+
+- [x] **SEC-1** `0005_force_rls.py` — `ALTER TABLE ... FORCE ROW LEVEL SECURITY` on all 8 tenant tables (users, roles, teams, contacts, channel_accounts, conversations, messages, message_status)
+- [x] **SEC-2** `0006_fix_rls_null_context.py` — RLS policy updated: `USING (NULL OR tenant_id = ...)` so webhook/worker sessions can do cross-tenant lookups without breaking inbound routing
+- [x] **SEC-3** `inbox/service.py` — `list_conversations`, `get_conversation`, `list_messages`, `send_outbound`, `add_internal_note`, `assign_conversation` — all scoped by `tenant_id`
+- [x] **SEC-4** `inbox/router.py` — all calls pass `tenant_id=_user.tenant_id`
+- [x] **SEC-5** `contacts/service.py` — `get_or_create_contact` — email, phone, channel_identifier lookups scoped by `tenant_id`
+- [x] **SEC-6** `channels/router.py` — `list_channels`, `update_channel_credentials`, `delete_channel` — scoped by `_user.tenant_id`
+- [x] **SEC-7** `ai/service.py` — `get_configurations`, `update_configuration`, `is_ai_active`, `_config_map`, `list_runs`, `get_run` — all scoped by `tenant_id`
+- [x] **SEC-8** `ai/router.py` — all calls pass `tenant_id=_user.tenant_id`
+- [x] **SEC-9** `knowledge/service.py` — `list_documents`, `delete_document`, `search` — scoped by `tenant_id`
+- [x] **SEC-10** `knowledge/router.py` — all calls pass `tenant_id=_user.tenant_id`
+- [x] **SEC-11** `ai/tools.py` — `search_knowledge_base` tool passes `tenant_id=uuid.UUID(ctx.tenant_id)` to knowledge search
+- [x] **SEC-12** `workers/ai_executor.py` — `is_ai_active` receives `tenant_id=uuid.UUID(tenant_id)`
 **UI status**: Inbox ✅ · Avatars ✅ · Channel icons ✅ · Internal notes ✅ · WhatsApp connected ✅ · AI tuning 🔄
 
 ### 🤖 AI provider = Google Gemini (via OpenAI Agents SDK) — DONE in code

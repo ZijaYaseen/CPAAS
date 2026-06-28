@@ -24,7 +24,7 @@ AdminOnly = Depends(require_role(UserRole.org_admin, UserRole.super_admin))
 
 @router.get("/configurations", response_model=list[AIConfigResponse])
 async def get_configurations(db: TenantDB, _user: CurrentUser):
-    return [AIConfigResponse.model_validate(c) for c in await service.get_configurations(db)]
+    return [AIConfigResponse.model_validate(c) for c in await service.get_configurations(db, tenant_id=_user.tenant_id)]
 
 
 @router.put("/configurations/{agent_type}", response_model=AIConfigResponse)
@@ -70,13 +70,13 @@ async def list_runs(
 ):
     return [
         AIRunResponse.model_validate(r)
-        for r in await service.list_runs(db, limit=limit, offset=offset)
+        for r in await service.list_runs(db, tenant_id=_user.tenant_id, limit=limit, offset=offset)
     ]
 
 
 @router.get("/runs/{run_id}", response_model=AIRunDetailResponse)
 async def get_run(run_id: uuid.UUID, db: TenantDB, _user: CurrentUser):
-    run, calls = await service.get_run(db, run_id)
+    run, calls = await service.get_run(db, run_id, tenant_id=_user.tenant_id)
     return AIRunDetailResponse(
         **AIRunResponse.model_validate(run).model_dump(),
         tool_calls=[AIToolCallResponse.model_validate(c) for c in calls],

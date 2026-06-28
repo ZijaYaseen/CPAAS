@@ -33,13 +33,14 @@ from src.modules.inbox.models import (
 async def list_conversations(
     db: AsyncSession,
     *,
+    tenant_id: uuid.UUID,
     status: str | None = None,
     assigned_to_user_id: uuid.UUID | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
     """Return conversations (newest activity first) with contact + last-message preview."""
-    stmt = select(Conversation)
+    stmt = select(Conversation).where(Conversation.tenant_id == tenant_id)
     if status:
         stmt = stmt.where(Conversation.status == status)
     if assigned_to_user_id:
@@ -90,17 +91,27 @@ async def list_conversations(
     return result
 
 
-async def get_conversation(db: AsyncSession, conversation_id: uuid.UUID) -> Conversation:
-    conv = await db.scalar(select(Conversation).where(Conversation.id == conversation_id))
+async def get_conversation(
+    db: AsyncSession, conversation_id: uuid.UUID, tenant_id: uuid.UUID | None = None
+) -> Conversation:
+    stmt = select(Conversation).where(Conversation.id == conversation_id)
+    if tenant_id is not None:
+        stmt = stmt.where(Conversation.tenant_id == tenant_id)
+    conv = await db.scalar(stmt)
     if conv is None:
         raise NotFoundError("Conversation not found")
     return conv
 
 
 async def list_messages(
-    db: AsyncSession, conversation_id: uuid.UUID, *, limit: int = 100, offset: int = 0
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    *,
+    tenant_id: uuid.UUID | None = None,
+    limit: int = 100,
+    offset: int = 0,
 ) -> list[Message]:
-    await get_conversation(db, conversation_id)  # ensures existence within tenant (RLS)
+    await get_conversation(db, conversation_id, tenant_id=tenant_id)  # ensures existence within tenant
     stmt = (
         select(Message)
         .where(Message.conversation_id == conversation_id)
@@ -209,7 +220,7 @@ async def send_outbound(
     sender_user_id: uuid.UUID,
     media_urls: list[str] | None = None,
 ) -> Message:
-    conv = await get_conversation(db, conversation_id)
+    conv = await get_conversation(db, conversation_id, tenant_id=tenant_id)
     msg = Message(
         tenant_id=tenant_id,
         conversation_id=conv.id,
@@ -241,7 +252,7 @@ async def add_internal_note(
     content: str,
     user_id: uuid.UUID,
 ) -> Message:
-    conv = await get_conversation(db, conversation_id)
+    conv = await get_conversation(db, conversation_id, tenant_id=tenant_id)
     note = Message(
         tenant_id=tenant_id,
         conversation_id=conv.id,
@@ -271,7 +282,7 @@ async def assign_conversation(
 ) -> Conversation:
     if user_id is None and team_id is None:
         raise ValidationError("Provide assigned_to_user_id or assigned_to_team_id")
-    conv = await get_conversation(db, conversation_id)
+    conv = await get_conversation(db, conversation_id, tenant_id=tenant_id)
     conv.assigned_to_user_id = user_id
     conv.assigned_to_team_id = team_id
     await db.flush()

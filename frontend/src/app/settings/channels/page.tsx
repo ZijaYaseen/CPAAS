@@ -850,7 +850,7 @@ export default function ChannelsPage() {
           </div>
           <p className="font-semibold">No channels connected yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Start with Web Chat — it takes less than one minute and requires no external account.
+            Start with Web Chat. it takes less than one minute and requires no external account.
           </p>
         </div>
       )}

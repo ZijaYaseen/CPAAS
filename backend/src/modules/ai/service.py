@@ -31,8 +31,8 @@ logger = get_logger("ai")
 # ---------------------------------------------------------------------------
 
 
-async def get_configurations(db: AsyncSession) -> list[AIConfiguration]:
-    return list((await db.scalars(select(AIConfiguration))).all())
+async def get_configurations(db: AsyncSession, *, tenant_id: uuid.UUID) -> list[AIConfiguration]:
+    return list((await db.scalars(select(AIConfiguration).where(AIConfiguration.tenant_id == tenant_id))).all())
 
 
 async def update_configuration(
@@ -45,7 +45,7 @@ async def update_configuration(
 ) -> AIConfiguration:
     if AgentType(agent_type) not in MVP_AGENTS:
         raise NotFoundError(f"Agent '{agent_type}' is not available in the MVP")
-    cfg = await db.scalar(select(AIConfiguration).where(AIConfiguration.agent_type == agent_type))
+    cfg = await db.scalar(select(AIConfiguration).where(AIConfiguration.tenant_id == tenant_id, AIConfiguration.agent_type == agent_type))
     if cfg is None:
         cfg = AIConfiguration(tenant_id=tenant_id, agent_type=agent_type)
         db.add(cfg)
@@ -65,16 +65,16 @@ async def set_kill_switch(db: AsyncSession, *, tenant_id: uuid.UUID, enabled: bo
         )
 
 
-async def is_ai_active(db: AsyncSession) -> bool:
+async def is_ai_active(db: AsyncSession, *, tenant_id: uuid.UUID) -> bool:
     """AI is active unless the router has been explicitly disabled (default-on)."""
     router_cfg = await db.scalar(
-        select(AIConfiguration).where(AIConfiguration.agent_type == AgentType.router.value)
+        select(AIConfiguration).where(AIConfiguration.tenant_id == tenant_id, AIConfiguration.agent_type == AgentType.router.value)
     )
     return router_cfg.is_enabled if router_cfg is not None else True
 
 
-async def _config_map(db: AsyncSession) -> dict[str, dict]:
-    configs = await get_configurations(db)
+async def _config_map(db: AsyncSession, *, tenant_id: uuid.UUID) -> dict[str, dict]:
+    configs = await get_configurations(db, tenant_id=tenant_id)
     return {c.agent_type: {"system_prompt": c.system_prompt} for c in configs if c.is_enabled}
 
 
@@ -109,7 +109,7 @@ async def run_ai(
     else:
         # Pre-fetch KB context and inject into prompt — avoids tool calls entirely
         try:
-            kb_results = await knowledge_service.search(db, query=prompt, top_k=5)
+            kb_results = await knowledge_service.search(db, query=prompt, tenant_id=tenant_id, top_k=5)
             kb_context = "\n\n---\n\n".join(r["content"] for r in kb_results) if kb_results else ""
         except Exception:  # noqa: BLE001
             kb_context = ""
@@ -118,7 +118,7 @@ async def run_ai(
         token = current_tool_context.set(ctx)
         try:
             result = await Runner.run(
-                build_agent_graph(await _config_map(db), kb_context=kb_context),
+                build_agent_graph(await _config_map(db, tenant_id=tenant_id), kb_context=kb_context),
                 input=prompt,
             )
             response = (result.final_output or "").strip() or None
@@ -216,13 +216,23 @@ async def run_ai(
 # ---------------------------------------------------------------------------
 
 
-async def list_runs(db: AsyncSession, *, limit: int = 50, offset: int = 0) -> list[AIRun]:
-    stmt = select(AIRun).order_by(AIRun.created_at.desc()).limit(limit).offset(offset)
+async def list_runs(
+    db: AsyncSession, *, tenant_id: uuid.UUID, limit: int = 50, offset: int = 0
+) -> list[AIRun]:
+    stmt = (
+        select(AIRun)
+        .where(AIRun.tenant_id == tenant_id)
+        .order_by(AIRun.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     return list((await db.scalars(stmt)).all())
 
 
-async def get_run(db: AsyncSession, run_id: uuid.UUID) -> tuple[AIRun, list[AIToolCall]]:
-    run = await db.scalar(select(AIRun).where(AIRun.id == run_id))
+async def get_run(
+    db: AsyncSession, run_id: uuid.UUID, *, tenant_id: uuid.UUID
+) -> tuple[AIRun, list[AIToolCall]]:
+    run = await db.scalar(select(AIRun).where(AIRun.id == run_id, AIRun.tenant_id == tenant_id))
     if run is None:
         raise NotFoundError("AI run not found")
     calls = list((await db.scalars(select(AIToolCall).where(AIToolCall.ai_run_id == run_id))).all())

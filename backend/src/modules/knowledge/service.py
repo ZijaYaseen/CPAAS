@@ -37,17 +37,21 @@ async def create_document(
     return doc
 
 
-async def list_documents(db: AsyncSession) -> list[KnowledgeDocument]:
+async def list_documents(db: AsyncSession, *, tenant_id: uuid.UUID) -> list[KnowledgeDocument]:
     stmt = (
         select(KnowledgeDocument)
-        .where(KnowledgeDocument.is_active.is_(True))
+        .where(KnowledgeDocument.tenant_id == tenant_id, KnowledgeDocument.is_active.is_(True))
         .order_by(KnowledgeDocument.created_at.desc())
     )
     return list((await db.scalars(stmt)).all())
 
 
-async def delete_document(db: AsyncSession, document_id: uuid.UUID) -> None:
-    doc = await db.scalar(select(KnowledgeDocument).where(KnowledgeDocument.id == document_id))
+async def delete_document(db: AsyncSession, document_id: uuid.UUID, *, tenant_id: uuid.UUID) -> None:
+    doc = await db.scalar(
+        select(KnowledgeDocument).where(
+            KnowledgeDocument.id == document_id, KnowledgeDocument.tenant_id == tenant_id
+        )
+    )
     if doc is None:
         raise NotFoundError("Document not found")
     await db.delete(doc)  # chunks cascade
@@ -97,13 +101,15 @@ async def process_document(db: AsyncSession, *, document_id: uuid.UUID) -> int:
         raise
 
 
-async def search(db: AsyncSession, *, query: str, top_k: int = 5) -> list[dict]:
+async def search(
+    db: AsyncSession, *, query: str, tenant_id: uuid.UUID, top_k: int = 5
+) -> list[dict]:
     """Semantic search over the tenant's knowledge chunks (cosine distance)."""
     query_vec = await embed_text(query)
     distance = KnowledgeChunk.embedding.cosine_distance(query_vec)
     stmt = (
         select(KnowledgeChunk.content, distance.label("distance"))
-        .where(KnowledgeChunk.embedding.is_not(None))
+        .where(KnowledgeChunk.tenant_id == tenant_id, KnowledgeChunk.embedding.is_not(None))
         .order_by(distance)
         .limit(top_k)
     )

@@ -63,18 +63,18 @@ async def upload_document(db: TenantDB, user: CurrentUser, file: UploadFile = Fi
 
 @router.get("/documents", response_model=list[DocumentResponse])
 async def list_documents(db: TenantDB, _user: CurrentUser):
-    docs = await service.list_documents(db)
+    docs = await service.list_documents(db, tenant_id=_user.tenant_id)
     return [DocumentResponse.model_validate(d) for d in docs]
 
 
 @router.delete("/documents/{document_id}", status_code=204)
 async def delete_document(document_id: uuid.UUID, db: TenantDB, _user: CurrentUser):
-    await service.delete_document(db, document_id)
+    await service.delete_document(db, document_id, tenant_id=_user.tenant_id)
 
 
 @router.post("/search", response_model=list[SearchResult])
 async def search(payload: SearchRequest, db: TenantDB, _user: CurrentUser):
-    results = await service.search(db, query=payload.query, top_k=payload.top_k)
+    results = await service.search(db, query=payload.query, tenant_id=_user.tenant_id, top_k=payload.top_k)
     return [SearchResult(**r) for r in results]
 
 

@@ -29,6 +29,7 @@ async def list_conversations(
 ):
     rows = await service.list_conversations(
         db,
+        tenant_id=_user.tenant_id,
         status=status,
         assigned_to_user_id=_user.id if assigned_to_me else None,
         limit=limit,
@@ -64,7 +65,7 @@ async def get_messages(
     limit: int = Query(default=100, le=500),
     offset: int = Query(default=0, ge=0),
 ):
-    messages = await service.list_messages(db, conversation_id, limit=limit, offset=offset)
+    messages = await service.list_messages(db, conversation_id, tenant_id=_user.tenant_id, limit=limit, offset=offset)
     return [MessageResponse.model_validate(m) for m in messages]
 
 

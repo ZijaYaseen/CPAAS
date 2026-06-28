@@ -41,7 +41,7 @@ webhooks_router = APIRouter(tags=["webhooks"])
 
 @router.get("", response_model=list[ChannelAccountResponse])
 async def list_channels(db: TenantDB, _user: CurrentUser):
-    accounts = (await db.scalars(select(ChannelAccount))).all()
+    accounts = (await db.scalars(select(ChannelAccount).where(ChannelAccount.tenant_id == _user.tenant_id))).all()
     return [ChannelAccountResponse.model_validate(a) for a in accounts]
 
 
@@ -119,7 +119,7 @@ async def update_channel_credentials(
 ):
     """Update sensitive credentials (access token, password) without reconnecting."""
     from src.core.crypto import encrypt_dict
-    account = await db.scalar(select(ChannelAccount).where(ChannelAccount.id == channel_id))
+    account = await db.scalar(select(ChannelAccount).where(ChannelAccount.id == channel_id, ChannelAccount.tenant_id == user.tenant_id))
     if account is None:
         from src.core.exceptions import NotFoundError
         raise NotFoundError("Channel not found")
@@ -156,7 +156,7 @@ async def update_channel_credentials(
 
 @router.delete("/{channel_id}", status_code=204)
 async def delete_channel(channel_id: uuid.UUID, db: TenantDB, _user: CurrentUser):
-    account = await db.scalar(select(ChannelAccount).where(ChannelAccount.id == channel_id))
+    account = await db.scalar(select(ChannelAccount).where(ChannelAccount.id == channel_id, ChannelAccount.tenant_id == _user.tenant_id))
     if account:
         await db.delete(account)
     return None

@@ -6,6 +6,8 @@ update_contact, send_broadcast) are intentionally NOT registered and are blocked
 by :func:`enforce_read_only`.
 """
 
+import uuid
+
 from agents import function_tool
 from sqlalchemy import select
 
@@ -42,7 +44,7 @@ def _record(tool_name: str, input_: dict, output: dict) -> None:
 async def search_knowledge_base(query: str) -> str:
     """Search the organization's knowledge base for information relevant to the query."""
     ctx = get_tool_context()
-    results = await knowledge_service.search(ctx.session, query=query, top_k=5)
+    results = await knowledge_service.search(ctx.session, query=query, tenant_id=uuid.UUID(ctx.tenant_id), top_k=5)
     _record("search_knowledge_base", {"query": query}, {"count": len(results)})
     if not results:
         return "No relevant information was found in the knowledge base."

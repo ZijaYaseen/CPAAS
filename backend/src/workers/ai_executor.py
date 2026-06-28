@@ -28,7 +28,7 @@ logger = get_logger("worker.ai")
 def respond_to_message(self, tenant_id: str, conversation_id: str, prompt: str) -> str | None:
     async def _run(db):
         await set_tenant_context(db, tenant_id)
-        if not await ai_service.is_ai_active(db):
+        if not await ai_service.is_ai_active(db, tenant_id=uuid.UUID(tenant_id)):
             return {"skipped": True}
         return await ai_service.run_ai(
             db,

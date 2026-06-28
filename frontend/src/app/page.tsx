@@ -163,7 +163,7 @@ export default function Home() {
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Now live · Powered by Gemini AI
+            Now live · Everything in One Place
           </div>
 
           <h1
